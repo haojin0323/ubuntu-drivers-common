@@ -1,39 +1,28 @@
 # ubuntu-drivers-common
 
-This package aggregates and abstracts Ubuntu specific logic and knowledge
-about third-party driver packages, and provides APIs for installers and driver
-configuration GUIs. It also contains some NVidia specific support code to find
-the most appropriate driver version (as we usually ship several), as well as
-setting up the alternatives symlinks that the proprietary NVidia and FGLRX
-packages use.
+该软件包汇总和抽象了 Ubuntu 特定逻辑和有关第三方驱动程序包的知识，并为安装程序和驱动程序配置 GUI 提供 API。它还包含一些 NVIDIA 特定支持代码，以找到最合适的驱动程序版本（因为我们通常会装几个），以及设置专有 NVIDIA 和 FGLRX 软件包所使用的替代符号链接。
 
-## Command line interface
+## 命令行接口
 
-The simplest frontend is the `ubuntu-drivers` command line tool. You can use
-it to show the available driver packages which apply to the current system
-(`ubuntu-drivers list`), or to install all drivers which are appropriate for
-automatic installation (`sudo ubuntu-drivers autoinstall`), which is mostly
-useful for integration into installers.
+最简单的前端是 "ubuntu-drivers" 命令行工具。 您可以使用它来显示适用于当前系统的可用驱动程序包（`ubuntu-drivers list`），或者安装所有适合自动安装的驱动程序（`sudo ubuntu-drivers autoinstall`），这对于集成到安装程序中非常有用。
 
-Please see `ubuntu-drivers --help` for details.
+有关详细信息，请参阅 `ubuntu-drivers --help` 
 
 ## Python API
 
-The `UbuntuDrivers.detect` Python module provides some functions to detect the
-system's hardware, matching driver packages, and packages which are eligible
-for automatic installation.
+Python 模块 `UbuntuDrivers.detect` 提供了一些函数来检测系统的硬件、匹配的驱动程序包以及符合自动安装条件的包。
 
-The three main functions are:
+三个主要功能如下：
 
-1. Which driver packages apply to this system?  
+1. 哪些驱动程序包适用于此系统？
 
    `packages = UbuntuDrivers.detect.system_driver_packages()`
 
-2. Which devices need drivers, and which packages do they need?
+2. 哪些设备需要驱动程序，需要哪些软件包？
 
    `driver_info = UbuntuDrivers.detect.system_device_drivers()`
 
-3. Which driver package(s) applies to this piece of hardware?
+3. 哪一个驱动程序包适用于此硬件？
 
     ```python
     import apt
@@ -41,21 +30,18 @@ The three main functions are:
     apt_packages = UbuntuDrivers.detect.packages_for_modalias(apt_cache, modalias)
     ```
 
-These functions only use python-apt. They do not need any other dependencies,
-root privileges, D-BUS calls, etc.
+这些函数只使用 python-apt，不需要任何其他依赖、root权限、D-BUS调用等。
 
-## Detection logic
+## 检测逻辑
 
-The principal method of mapping hardware to driver packages is to use modalias
-patterns. Hardware devices export a "modalias" sysfs attribute, for example
+将硬件映射到驱动程序包的主要方法是使用 modalias 模式。硬件设备导出一个 `"modalias"` sysfs 属性，例如：
 
 ```shell
 $ cat /sys/devices/pci0000:00/0000:00:1b.0/modalias
 pci:v00008086d00003B56sv000017AAsd0000215Ebc04sc03i00
 ```
 
-Kernel modules declare which hardware they can handle with modalias patterns
-(globs), e. g.:
+内核模块用 modalias 模式（globs）声明它们可以处理哪些硬件，例如：
 
 ```shell
 $ modinfo snd_hda_intel
@@ -63,25 +49,17 @@ $ modinfo snd_hda_intel
 alias:          pci:v00008086d*sv*sd*bc04sc03i00*
 ```
 
-Driver packages which are not installed by default (e. g. backports of drivers
+默认不安装的驱动程序包 (e. g. backports of drivers
 from newer Linux packages, or the proprietary NVidia driver package
 `nvidia-current`) have a `Modaliases:` package header which includes all
 modalias patterns from all kernel modules that they ship. It is recommended to
 add these headers to the package with `dh_modaliases(1)`.
 
-`ubuntu-drivers-common` uses these package headers to map a particular piece of
-hardware (identified by a modalias) to the driver packages which cover that
-hardware.
+`ubuntu-drivers-common` 使用这些包头将特定硬件（由 modalias标识）映射到覆盖该硬件的驱动程序包。
 
-## Custom detection plugins
+## 自定义检测插件
 
-For some kinds of drivers the modalias detection approach does not work. For
-example, the "sl-modem-daemon" driver requires some checks in
-`/proc/asound/cards` and `aplay -l` to decide whether or not it applies to the
-system. These special cases can be put into a `detection plugin`, by adding a
-small piece of Python code to `/usr/share/ubuntu-drivers-common/detect/NAME.py`
-(shipped in `./detect-plugins/` in the `ubuntu-drivers-common` source). They need
-to export a method
+对于某些类型的驱动程序， modalias 检测方法不起作用。 例如 the "sl-modem-daemon" driver requires some checks in `/proc/asound/cards` and `aplay -l` to decide whether or not it applies to the system. These special cases can be put into a `detection plugin`, by adding a small piece of Python code to `/usr/share/ubuntu-drivers-common/detect/NAME.py` (shipped in `./detect-plugins/` in the `ubuntu-drivers-common` source). 他们需要导出一个方法
 
 ```python
    def detect(apt_cache):
@@ -89,19 +67,14 @@ to export a method
       return ['driver_package', ...]
 ```
 
-which can do any kind of detection and then return the resulting set of
-packages that apply to the current system. Please note that this cannot rely on
-having root privileges.
+它可以进行任何类型的检测，然后返回结果的适用于当前系统的包集。请注意，这不能依赖于拥有根权限。
 
-## Autopkgtest
+## 自动打包测试
 
-For the autopkgtest of ubuntu-drivers, the following command can be used when
-developing test cases:
+对于Ubuntu驱动程序的 `autopkg` 测试，在开发测试用例时可以使用以下命令：
 
 ```shell
 $ PYTHONPATH=. tests/run test_ubuntu_drivers
 ```
 
-Testing in a clean environment is always recommended. Using a pbuilder chroot,
-an sbuild chroot, or a direct upload to a PPA, will reduce the chances of tests
-failing due to your specific system.
+建议总是在干净的环境中进行测试。使用 pbuilder chroot、sbuild chroot 或直接上传到 PPA，将减少由于特定系统而导致测试失败的可能性。
